@@ -30,7 +30,7 @@ const Content = styled.div`
   flex-grow: 1;
   margin-right: 12px;
   font-size: 15px;
-  color: #2d3436;
+  color: ${props => props.theme.colors.text};
 `;
 
 const Input = styled.input`
