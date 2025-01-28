@@ -28,7 +28,7 @@ const Title = styled.h2`
 
   &::before {
     content: '${props => {
-      switch(props.columnId) {
+      switch(props.$columnId) {
         case 'todo': return '📝';
         case 'inProgress': return '⚡';
         case 'done': return '✅';
@@ -41,7 +41,7 @@ const Title = styled.h2`
 const TaskList = styled.div`
   padding: 8px;
   min-height: 100px;
-  background: ${props => props.isDraggingOver 
+  background: ${props => props.$isDraggingOver 
     ? props.theme.colors.surfaceHover 
     : props.theme.colors.surface};
   border-radius: 12px;
@@ -72,13 +72,13 @@ function Column({ columnId, title, tasks, onUpdateTask, onDeleteTask }) {
 
   return (
     <Container>
-      <Title columnId={columnId}>{title}</Title>
+      <Title $columnId={columnId}>{title}</Title>
       <Droppable droppableId={columnId}>
         {(provided, snapshot) => (
           <TaskList
             ref={provided.innerRef}
             {...provided.droppableProps}
-            isDraggingOver={snapshot.isDraggingOver}
+            $isDraggingOver={snapshot.isDraggingOver}
           >
             {tasks.map((task, index) => (
               <Task 

@@ -32,16 +32,42 @@ router.post('/', async (req, res) => {
 
 // Update task
 router.put('/:id', async (req, res) => {
+  console.log('Update request received:', {
+    params: req.params,
+    body: req.body
+  });
   const { id } = req.params;
   const { content, column_id, column_order } = req.body;
+  
   try {
+    // First check if the task exists
+    const checkTask = await pool.query(
+      'SELECT * FROM tasks WHERE id = $1',
+      [id]
+    );
+
+    if (checkTask.rows.length === 0) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    // Update the task
     const result = await pool.query(
-      'UPDATE tasks SET content = $1, column_id = $2, column_order = $3 WHERE id = $4 RETURNING *',
+      `UPDATE tasks 
+       SET content = COALESCE($1, content),
+           column_id = COALESCE($2, column_id),
+           column_order = COALESCE($3, column_order)
+       WHERE id = $4 
+       RETURNING *`,
       [content, column_id, column_order, id]
     );
+
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Error updating task:', err);
+    res.status(500).json({ 
+      error: err.message,
+      details: err.stack 
+    });
   }
 });
 

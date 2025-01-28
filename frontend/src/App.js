@@ -94,13 +94,14 @@ function AppContent() {
     if (!result.destination) return;
 
     const { source, destination } = result;
-    
+    let movedItem;  // Define movedItem at the top
+
     if (source.droppableId === destination.droppableId) {
       // Moving within the same column
       const column = tasks[source.droppableId];
       const items = Array.from(column.items);
-      const [reorderedItem] = items.splice(source.index, 1);
-      items.splice(destination.index, 0, reorderedItem);
+      [movedItem] = items.splice(source.index, 1);  // Assign movedItem here
+      items.splice(destination.index, 0, movedItem);
 
       setTasks({
         ...tasks,
@@ -115,7 +116,7 @@ function AppContent() {
       const destColumn = tasks[destination.droppableId];
       const sourceItems = Array.from(sourceColumn.items);
       const destItems = Array.from(destColumn.items);
-      const [movedItem] = sourceItems.splice(source.index, 1);
+      [movedItem] = sourceItems.splice(source.index, 1);  // Assign movedItem here
       destItems.splice(destination.index, 0, movedItem);
 
       setTasks({
@@ -139,9 +140,9 @@ function AppContent() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          content: movedItem.content,  // Now movedItem is defined
           column_id: destination.droppableId,
           column_order: destination.index,
-          content: movedItem.content
         }),
       });
     } catch (error) {
@@ -184,20 +185,20 @@ function AppContent() {
     try {
       // Find the task and its column
       let taskColumn;
-      let task;
+      let columnOrder;
       for (const [columnId, column] of Object.entries(tasks)) {
-        const foundTask = column.items.find(t => t.id === taskId);
-        if (foundTask) {
+        const taskIndex = column.items.findIndex(t => t.id === taskId);
+        if (taskIndex !== -1) {
           taskColumn = columnId;
-          task = foundTask;
+          columnOrder = taskIndex;
           break;
         }
       }
 
-      if (!task) return;
+      if (taskColumn === undefined) return;
 
       // Update backend
-      await fetch(`http://localhost:8080/api/tasks/${taskId}`, {
+      const response = await fetch(`http://localhost:8080/api/tasks/${taskId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -205,9 +206,13 @@ function AppContent() {
         body: JSON.stringify({
           content: newContent,
           column_id: taskColumn,
-          column_order: task.column_order
+          column_order: columnOrder
         }),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       // Update frontend state
       setTasks(prev => ({
@@ -221,6 +226,7 @@ function AppContent() {
       }));
     } catch (error) {
       console.error('Error updating task:', error);
+      // Optionally, revert the UI change here
     }
   };
 

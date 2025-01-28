@@ -8,11 +8,11 @@ const Container = styled.div`
   border-radius: 12px;
   padding: 12px;
   margin-bottom: 12px;
-  background: ${props => props.isDragging 
+  background: ${props => props.$isDragging 
     ? props.theme.colors.surfaceHover 
     : props.theme.colors.surface};
   color: ${props => props.theme.colors.text};
-  box-shadow: ${props => props.isDragging 
+  box-shadow: ${props => props.$isDragging 
     ? '0 8px 16px rgba(0,0,0,0.1)' 
     : '0 4px 8px rgba(0,0,0,0.05)'};
   display: flex;
@@ -68,13 +68,13 @@ const Button = styled.button`
   align-items: center;
   gap: 4px;
   
-  ${props => props.variant === 'delete' ? `
+  ${props => props.$variant === 'delete' ? `
     background: ${props.theme.colors.danger};
     color: white;
     &:hover {
       background: ${props.theme.colors.dangerHover};
     }
-  ` : props.variant === 'cancel' ? `
+  ` : props.$variant === 'cancel' ? `
     background: ${props.theme.colors.cancel};
     color: white;
     &:hover {
@@ -127,7 +127,7 @@ function Task({ task, index, onUpdate, onDelete }) {
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-          isDragging={snapshot.isDragging}
+          $isDragging={snapshot.isDragging}
         >
           {isEditing ? (
             <>
@@ -145,7 +145,7 @@ function Task({ task, index, onUpdate, onDelete }) {
                   <SaveIcon /> Save
                 </Button>
                 <Button 
-                  variant="cancel" 
+                  $variant="cancel" 
                   onClick={() => {
                     setIsEditing(false);
                     setEditedContent(task.content);
@@ -162,7 +162,7 @@ function Task({ task, index, onUpdate, onDelete }) {
                 <Button onClick={() => setIsEditing(true)}>
                   <EditIcon /> Edit
                 </Button>
-                <Button variant="delete" onClick={() => onDelete(task.id)}>
+                <Button $variant="delete" onClick={() => onDelete(task.id)}>
                   <DeleteIcon /> Delete
                 </Button>
               </ButtonGroup>
