@@ -18,11 +18,11 @@ router.get('/', async (req, res) => {
 
 // Create a new task
 router.post('/', async (req, res) => {
-  const { content, column_id, column_order } = req.body;
+  const { content, column_id, column_order, board_id } = req.body;
   try {
     const result = await pool.query(
-      'INSERT INTO tasks (content, column_id, column_order) VALUES ($1, $2, $3) RETURNING *',
-      [content, column_id, column_order]
+      'INSERT INTO tasks (content, column_id, column_order, board_id) VALUES ($1, $2, $3, $4) RETURNING *',
+      [content, column_id, column_order, board_id]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {

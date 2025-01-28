@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import Column from './components/Column';
 import AddTask from './components/AddTask';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import BoardsList from './components/BoardsList';
 
 const Container = styled.div`
   display: flex;
@@ -11,6 +12,8 @@ const Container = styled.div`
   height: 100vh;
   background: ${props => props.theme.colors.background};
   transition: background-color 0.2s ease;
+  margin-left: ${props => props.$showPanel ? '300px' : '0'};
+  transition: margin-left 0.3s ease;
 `;
 
 const BoardContainer = styled.div`
@@ -47,27 +50,21 @@ const ThemeToggle = styled.button`
 function AppContent() {
   const { theme, toggleTheme } = useTheme();
   const [tasks, setTasks] = useState({
-    todo: {
-      title: 'To Do',
-      items: []
-    },
-    inProgress: {
-      title: 'In Progress',
-      items: []
-    },
-    done: {
-      title: 'Done',
-      items: []
-    }
+    todo: { title: 'To Do', items: [] },
+    inProgress: { title: 'In Progress', items: [] },
+    done: { title: 'Done', items: [] }
   });
+  const [activeBoard, setActiveBoard] = useState('1');
+  const [showPanel, setShowPanel] = useState(true);
 
+  // Fetch tasks when activeBoard changes
   useEffect(() => {
-    fetchTasks();
-  }, []);
+    fetchTasksForBoard(activeBoard);
+  }, [activeBoard]);
 
-  const fetchTasks = async () => {
+  const fetchTasksForBoard = async (boardId) => {
     try {
-      const response = await fetch('http://localhost:8080/api/tasks');
+      const response = await fetch(`http://localhost:8080/api/boards/${boardId}/tasks`);
       const data = await response.json();
       
       // Transform the flat array into our column structure
@@ -159,23 +156,24 @@ function AppContent() {
         },
         body: JSON.stringify({
           content,
-          column_id: 'todo',  // New tasks always go to todo column
-          column_order: tasks.todo.items.length  // Add to end of todo list
+          column_id: 'todo',
+          column_order: tasks.todo.items.length,
+          board_id: activeBoard  // Add board_id to new tasks
         }),
       });
 
       const newTask = await response.json();
       
-      setTasks({
-        ...tasks,
+      setTasks(prev => ({
+        ...prev,
         todo: {
-          ...tasks.todo,
-          items: [...tasks.todo.items, {
+          ...prev.todo,
+          items: [...prev.todo.items, {
             id: newTask.id.toString(),
             content: newTask.content
           }]
         }
-      });
+      }));
     } catch (error) {
       console.error('Error adding task:', error);
     }
@@ -253,27 +251,61 @@ function AppContent() {
     }
   };
 
+  const handleBoardSelect = async (boardId) => {
+    setActiveBoard(boardId);
+  };
+
+  const handleCreateBoard = async (newBoard) => {
+    try {
+      const response = await fetch('http://localhost:8080/api/boards', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newBoard.name
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create board');
+      }
+
+      const createdBoard = await response.json();
+      setActiveBoard(createdBoard.id.toString());
+    } catch (error) {
+      console.error('Error creating board:', error);
+    }
+  };
+
   return (
-    <Container>
-      <ThemeToggle onClick={toggleTheme}>
-        {theme.isDarkMode ? '🌞' : '🌙'}
-      </ThemeToggle>
-      <AddTask onAddTask={handleAddTask} />
-      <BoardContainer>
-        <DragDropContext onDragEnd={handleDragEnd}>
-          {Object.entries(tasks).map(([columnId, column]) => (
-            <Column
-              key={columnId}
-              columnId={columnId}
-              title={column.title}
-              tasks={column.items}
-              onUpdateTask={handleUpdateTask}
-              onDeleteTask={handleDeleteTask}
-            />
-          ))}
-        </DragDropContext>
-      </BoardContainer>
-    </Container>
+    <>
+      <BoardsList
+        activeBoard={activeBoard}
+        onBoardSelect={handleBoardSelect}
+        onCreateBoard={handleCreateBoard}
+      />
+      <Container $showPanel={showPanel}>
+        <ThemeToggle onClick={toggleTheme}>
+          {theme.isDarkMode ? '🌞' : '🌙'}
+        </ThemeToggle>
+        <AddTask onAddTask={handleAddTask} />
+        <BoardContainer>
+          <DragDropContext onDragEnd={handleDragEnd}>
+            {Object.entries(tasks).map(([columnId, column]) => (
+              <Column
+                key={columnId}
+                columnId={columnId}
+                title={column.title}
+                tasks={column.items}
+                onUpdateTask={handleUpdateTask}
+                onDeleteTask={handleDeleteTask}
+              />
+            ))}
+          </DragDropContext>
+        </BoardContainer>
+      </Container>
+    </>
   );
 }
 
