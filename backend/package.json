@@ -24,13 +24,10 @@
   },
   "jest": {
     "testEnvironment": "node",
+    "collectCoverage": true,
     "coveragePathIgnorePatterns": [
       "/node_modules/"
     ],
-    "collectCoverageFrom": [
-      "**/*.{js,jsx}",
-      "!**/coverage/**",
-      "!**/node_modules/**"
-    ]
+    "setupFiles": ["<rootDir>/tests/setEnvVars.js"]
   }
 } 

@@ -2,20 +2,16 @@ const request = require('supertest');
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { pool } = require('../db');
 
-// Mock the database pool
-jest.mock('../db', () => ({
-  pool: {
-    query: jest.fn()
-  }
+// Mock the database module
+jest.mock('../utils/db', () => ({
+  executeQuery: jest.fn(),
+  checkDatabaseConnection: jest.fn().mockResolvedValue(true)
 }));
 
-const app = express();
-const authRoutes = require('../routes/auth');
-
-app.use(express.json());
-app.use('/api/auth', authRoutes);
+// Use mock server instead of real server
+const app = require('./mocks/server.mock');
+const { executeQuery } = require('../utils/db');
 
 describe('Auth Routes', () => {
   beforeEach(() => {
@@ -30,15 +26,16 @@ describe('Auth Routes', () => {
         password: 'password123'
       };
 
-      pool.query
-        .mockResolvedValueOnce({ rows: [] }) // user doesn't exist
+      // Mock the database responses
+      executeQuery
+        .mockResolvedValueOnce({ rows: [] }) // Check if user exists
         .mockResolvedValueOnce({ 
           rows: [{
             id: 1,
             name: mockUser.name,
             email: mockUser.email
           }]
-        });
+        }); // Insert user
 
       const response = await request(app)
         .post('/api/auth/signup')
@@ -57,7 +54,10 @@ describe('Auth Routes', () => {
         password: 'password123'
       };
 
-      pool.query.mockResolvedValueOnce({ rows: [{ id: 1 }] });
+      // Mock database response for existing user
+      executeQuery.mockResolvedValueOnce({ 
+        rows: [{ id: 1, email: mockUser.email }] 
+      });
 
       const response = await request(app)
         .post('/api/auth/signup')
@@ -77,7 +77,8 @@ describe('Auth Routes', () => {
 
       const hashedPassword = await bcrypt.hash(mockUser.password, 10);
 
-      pool.query.mockResolvedValueOnce({
+      // Mock database response
+      executeQuery.mockResolvedValueOnce({
         rows: [{
           id: 1,
           name: 'Test User',
@@ -103,7 +104,8 @@ describe('Auth Routes', () => {
 
       const hashedPassword = await bcrypt.hash('correctpassword', 10);
 
-      pool.query.mockResolvedValueOnce({
+      // Mock database response
+      executeQuery.mockResolvedValueOnce({
         rows: [{
           id: 1,
           email: mockUser.email,
