@@ -1,16 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
 import styled from 'styled-components';
-import Column from './components/Column';
-import AddTask from './components/AddTask';
-import { ThemeProvider, useTheme } from './context/ThemeContext';
-import BoardsList from './components/BoardsList';
-import { BrowserRouter as Router, Routes, Route, Navigate, createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
-import Login from './components/auth/Login';
-import Signup from './components/auth/Signup';
-import ProtectedRoute from './components/auth/ProtectedRoute';
-import KanbanBoard from './components/KanbanBoard';
+import Column from './Column';
+import AddTask from './AddTask';
+import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import BoardsList from './BoardsList';
 
 const Container = styled.div`
   display: flex;
@@ -53,8 +48,24 @@ const ThemeToggle = styled.button`
   }
 `;
 
-function AppContent() {
+const LogoutButton = styled.button`
+  position: fixed;
+  top: 20px;
+  right: 80px;
+  padding: 10px 20px;
+  background: ${props => props.theme.colors.danger};
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  &:hover {
+    background: ${props => props.theme.colors.dangerHover};
+  }
+`;
+
+function KanbanBoard() {
   const { theme, toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
   const [tasks, setTasks] = useState({
     todo: { title: 'To Do', items: [] },
     inProgress: { title: 'In Progress', items: [] },
@@ -63,7 +74,6 @@ function AppContent() {
   const [activeBoard, setActiveBoard] = useState('1');
   const [showPanel, setShowPanel] = useState(true);
 
-  // Fetch tasks when activeBoard changes
   useEffect(() => {
     fetchTasksForBoard(activeBoard);
   }, [activeBoard]);
@@ -73,7 +83,6 @@ function AppContent() {
       const response = await fetch(`http://localhost:8080/api/boards/${boardId}/tasks`);
       const data = await response.json();
       
-      // Transform the flat array into our column structure
       const transformedTasks = {
         todo: { title: 'To Do', items: [] },
         inProgress: { title: 'In Progress', items: [] },
@@ -97,13 +106,12 @@ function AppContent() {
     if (!result.destination) return;
 
     const { source, destination } = result;
-    let movedItem;  // Define movedItem at the top
+    let movedItem;
 
     if (source.droppableId === destination.droppableId) {
-      // Moving within the same column
       const column = tasks[source.droppableId];
       const items = Array.from(column.items);
-      [movedItem] = items.splice(source.index, 1);  // Assign movedItem here
+      [movedItem] = items.splice(source.index, 1);
       items.splice(destination.index, 0, movedItem);
 
       setTasks({
@@ -114,12 +122,11 @@ function AppContent() {
         }
       });
     } else {
-      // Moving between columns
       const sourceColumn = tasks[source.droppableId];
       const destColumn = tasks[destination.droppableId];
       const sourceItems = Array.from(sourceColumn.items);
       const destItems = Array.from(destColumn.items);
-      [movedItem] = sourceItems.splice(source.index, 1);  // Assign movedItem here
+      [movedItem] = sourceItems.splice(source.index, 1);
       destItems.splice(destination.index, 0, movedItem);
 
       setTasks({
@@ -135,7 +142,6 @@ function AppContent() {
       });
     }
 
-    // Update the backend
     try {
       await fetch(`http://localhost:8080/api/tasks/${result.draggableId}`, {
         method: 'PUT',
@@ -143,7 +149,7 @@ function AppContent() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          content: movedItem.content,  // Now movedItem is defined
+          content: movedItem.content,
           column_id: destination.droppableId,
           column_order: destination.index,
         }),
@@ -164,7 +170,7 @@ function AppContent() {
           content,
           column_id: 'todo',
           column_order: tasks.todo.items.length,
-          board_id: activeBoard  // Add board_id to new tasks
+          board_id: activeBoard
         }),
       });
 
@@ -182,6 +188,33 @@ function AppContent() {
       }));
     } catch (error) {
       console.error('Error adding task:', error);
+    }
+  };
+
+  const handleBoardSelect = (boardId) => {
+    setActiveBoard(boardId);
+  };
+
+  const handleCreateBoard = async (newBoard) => {
+    try {
+      const response = await fetch('http://localhost:8080/api/boards', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newBoard.name
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create board');
+      }
+
+      const createdBoard = await response.json();
+      setActiveBoard(createdBoard.id.toString());
+    } catch (error) {
+      console.error('Error creating board:', error);
     }
   };
 
@@ -230,7 +263,6 @@ function AppContent() {
       }));
     } catch (error) {
       console.error('Error updating task:', error);
-      // Optionally, revert the UI change here
     }
   };
 
@@ -257,33 +289,6 @@ function AppContent() {
     }
   };
 
-  const handleBoardSelect = async (boardId) => {
-    setActiveBoard(boardId);
-  };
-
-  const handleCreateBoard = async (newBoard) => {
-    try {
-      const response = await fetch('http://localhost:8080/api/boards', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: newBoard.name
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create board');
-      }
-
-      const createdBoard = await response.json();
-      setActiveBoard(createdBoard.id.toString());
-    } catch (error) {
-      console.error('Error creating board:', error);
-    }
-  };
-
   return (
     <>
       <BoardsList
@@ -295,6 +300,7 @@ function AppContent() {
         <ThemeToggle onClick={toggleTheme}>
           {theme.isDarkMode ? '🌞' : '🌙'}
         </ThemeToggle>
+        <LogoutButton onClick={logout}>Logout</LogoutButton>
         <AddTask onAddTask={handleAddTask} />
         <BoardContainer>
           <DragDropContext onDragEnd={handleDragEnd}>
@@ -315,37 +321,4 @@ function AppContent() {
   );
 }
 
-const router = createBrowserRouter([
-  {
-    path: '/login',
-    element: <Login />
-  },
-  {
-    path: '/signup',
-    element: <Signup />
-  },
-  {
-    path: '/',
-    element: (
-      <ProtectedRoute>
-        <KanbanBoard />
-      </ProtectedRoute>
-    )
-  },
-  {
-    path: '*',
-    element: <Navigate to="/" replace />
-  }
-]);
-
-function App() {
-  return (
-    <AuthProvider>
-      <ThemeProvider>
-        <RouterProvider router={router} />
-      </ThemeProvider>
-    </AuthProvider>
-  );
-}
-
-export default App; 
+export default KanbanBoard; 

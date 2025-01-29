@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const taskRoutes = require('./routes/tasks');
 const boardRoutes = require('./routes/boards');
+const authRoutes = require('./routes/auth');
 const { pool } = require('./db');
 
 const app = express();
@@ -13,6 +14,7 @@ app.use(express.json());
 // Routes
 app.use('/api/tasks', taskRoutes);
 app.use('/api/boards', boardRoutes);
+app.use('/api/auth', authRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
