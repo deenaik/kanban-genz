@@ -6,11 +6,12 @@ const { pool } = require('../db');
 
 // Signup
 router.post('/signup', async (req, res) => {
-  const { name, email, password } = req.body;
-
+  const client = await pool.connect();
   try {
+    const { name, email, password } = req.body;
+
     // Check if user already exists
-    const userExists = await pool.query(
+    const userExists = await client.query(
       'SELECT * FROM users WHERE email = $1',
       [email]
     );
@@ -24,7 +25,7 @@ router.post('/signup', async (req, res) => {
     const passwordHash = await bcrypt.hash(password, salt);
 
     // Create user
-    const result = await pool.query(
+    const result = await client.query(
       'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, name, email',
       [name, email, passwordHash]
     );
@@ -48,16 +49,19 @@ router.post('/signup', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
   }
 });
 
 // Login
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-
+  const client = await pool.connect();
   try {
+    const { email, password } = req.body;
+
     // Find user
-    const result = await pool.query(
+    const result = await client.query(
       'SELECT * FROM users WHERE email = $1',
       [email]
     );
@@ -91,6 +95,8 @@ router.post('/login', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
   }
 });
 

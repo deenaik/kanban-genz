@@ -3,7 +3,7 @@ const cors = require('cors');
 const taskRoutes = require('./routes/tasks');
 const boardRoutes = require('./routes/boards');
 const authRoutes = require('./routes/auth');
-const { pool } = require('./db');
+const { checkDatabaseConnection } = require('./utils/db');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -21,6 +21,19 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-}); 
+// Initialize server
+const startServer = async () => {
+  try {
+    // Check database connection before starting server
+    await checkDatabaseConnection();
+    
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (err) {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  }
+};
+
+startServer(); 

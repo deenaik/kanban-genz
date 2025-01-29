@@ -1,0 +1,68 @@
+name: Backend Tests
+
+on:
+  push:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-tests.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-tests.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: kansas
+          POSTGRES_DB: kanban_db_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create test database schema
+        run: |
+          PGPASSWORD=kansas psql -h localhost -U postgres -d kanban_db_test -f init.sql
+
+      - name: Run tests
+        env:
+          DB_USER: postgres
+          DB_HOST: localhost
+          DB_NAME: kanban_db_test
+          DB_PASSWORD: kansas
+          DB_PORT: 5432
+          JWT_SECRET: test_secret
+        run: npm test -- --coverage
+
+      - name: Upload test coverage
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: coverage
+          path: backend/coverage 
