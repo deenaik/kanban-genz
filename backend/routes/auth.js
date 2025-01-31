@@ -37,6 +37,11 @@ router.post('/signup', async (req, res) => {
 
     const user = result.rows[0];
 
+    // Check if JWT_SECRET exists
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET is not configured');
+    }
+
     // Generate JWT
     const token = jwt.sign(
       { userId: user.id },
@@ -54,6 +59,9 @@ router.post('/signup', async (req, res) => {
     });
   } catch (error) {
     console.error('Signup error:', error);
+    if (error.message === 'JWT_SECRET is not configured') {
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
     res.status(500).json({ error: 'Internal server error' });
   }
 });
